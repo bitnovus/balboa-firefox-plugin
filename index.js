@@ -8,7 +8,19 @@ var BinaryInputStream = CC('@mozilla.org/binaryinputstream;1', 'nsIBinaryInputSt
 var BinaryOutputStream = CC('@mozilla.org/binaryoutputstream;1', 'nsIBinaryOutputStream', 'setOutputStream');
 var StorageStream = CC('@mozilla.org/storagestream;1', 'nsIStorageStream', 'init');
 
-var skeinBlockBytes = 128
+var pageMod = require("sdk/page-mod");
+var warnUser = function(fileName) {
+  pageMod.PageMod({
+    include: "*.balboa.io",
+    contentScriptWhen: "start",
+    attachTo: ["existing", "top"],
+    contentScriptFile: "resource://balboa/contentscript.js",
+    onAttach: function(worker) {
+      worker.port.emit("warn", fileName + " failed verification!\nSomeone may be tampering!");}
+  });
+};
+
+var skeinBlockBytes = 128;
 var signingBytes = skeinBlockBytes + 64;
 
 var signingPublicKey = base64ToUint8Array("nrj359niAAv0yzIxrhCO1yQ3zUZ3CkNgn0CrOrV7/KE=");
@@ -160,10 +172,12 @@ TracingListener.prototype = {
         this.originalListener.onStopRequest(aRequest, aContext, aStatusCode);
       }
       else {
+        warnUser(aRequest.name);
         this.originalListener.onStopRequest(aRequest, aContext, Cr.NS_ERROR_ABORT);
       }
     }
     catch (e) {
+      warnUser(aRequest.name);
       this.originalListener.onStopRequest(aRequest, aContext, Cr.NS_ERROR_ABORT);
     }
 
